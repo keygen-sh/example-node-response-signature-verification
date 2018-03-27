@@ -5,12 +5,10 @@ const {
 } = process.env
 
 const fetch = require('node-fetch')
-const NodeRSA = require('node-rsa')
 const crypto = require('crypto')
 const chalk = require('chalk')
 
 async function main() {
-  const rsa = new NodeRSA(KEYGEN_PUBLIC_KEY)
   const route = process.argv[2] || ''
 
   const res = await fetch(`https://api.keygen.sh/v1/accounts/${KEYGEN_ACCOUNT_ID}/${route}`, {
@@ -35,7 +33,11 @@ async function main() {
   // Validate the signature of the response using our public key
   const sig = res.headers.get('X-Signature')
   try {
-    const v = rsa.verify(body, Buffer.from(sig, 'base64'))
+    const verifier = crypto.createVerify('sha256')
+    verifier.write(body)
+    verifier.end()
+
+    const v = verifier.verify(KEYGEN_PUBLIC_KEY, sig, 'base64')
     if (!v) {
       throw new Error('Signature does not match')
     }
